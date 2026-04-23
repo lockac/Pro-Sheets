@@ -27,7 +27,7 @@ function prosheets_process_admin_actions() {
         if (wp_verify_nonce($_GET['_wpnonce'] ?? '', 'prosheets_reset_defaults')) {
             $tid = intval($_GET['id']);
             if (isset($tables[$tid])) {
-                $mandatory = array('name', 'sheet_id', 'range', 'cache_time', 'cache_unit');
+                $mandatory = array('name', 'sheet_id', 'range');
                 $cleaned = array_intersect_key($tables[$tid], array_flip($mandatory));
                 $tables[$tid] = $cleaned;
                 update_option('prosheets_tables', $tables);

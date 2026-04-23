@@ -71,7 +71,7 @@ if (!function_exists('prosheets_parse_range')) {
 }
 
 // =========================================================
-// 🔄 MAIN DATA FETCH FUNCTION (3-Call Approach)
+//  MAIN DATA FETCH FUNCTION (3-Call Approach)
 // Returns: values, merges, colors, column widths for range
 // =========================================================
 function get_prosheets_data($sheet_id, $range, $table_id = null) {
@@ -79,14 +79,26 @@ function get_prosheets_data($sheet_id, $range, $table_id = null) {
     
     // Pull cache time from admin settings
     $config = $table_id ? prosheets_get_table_config($table_id) : [];
-    $cache_time = isset($config['cache_time']) ? intval($config['cache_time']) : 3600;
+    // Pull config from admin settings
+    $config = $table_id ? prosheets_get_table_config($table_id) : [];
     
+    //CONVERT ADMIN TIME + UNIT TO SECONDS
+    $cache_value = isset($config['cache_time']) ? intval($config['cache_time']) : 1;
+    $cache_unit  = isset($config['cache_unit']) ? strtolower(trim($config['cache_unit'])) : 'hours';
+    
+    switch ($cache_unit) {
+        case 'minutes': $cache_time = $cache_value * 60; break;
+        case 'hours':   $cache_time = $cache_value * 3600; break;
+        case 'days':    $cache_time = $cache_value * 86400; break;
+        default:        $cache_time = 3600; // fallback to 1 hour
+    }
+     
     $enc_key = get_option('prosheets_encrypted_api_key', '');
     if (empty($enc_key)) return ['error' => 'API Key not configured.'];
     $api_key = trim(prosheets_decrypt_key($enc_key));
     if (empty($api_key)) return ['error' => 'Invalid API Key.'];
 
-    $cache_key = 'prosheets_unified_' . md5($sheet_id . $range);
+    $cache_key = 'prosheets_' . md5($sheet_id . $range);
     if (!$bypass) {
         $cached = get_transient($cache_key);
         if ($cached !== false) return $cached;
@@ -213,14 +225,14 @@ function get_prosheets_data($sheet_id, $range, $table_id = null) {
         $colors[] = array_pad([], $expected_cols, '');
     }
     
-    // ✅ STRICT FIX: Ensure col_widths exactly matches expected_cols (prevents phantom columns)
+    // STRICT FIX: Ensure col_widths exactly matches expected_cols (prevents phantom columns)
     $final_col_widths = [];
     for ($i = 0; $i < $expected_cols; $i++) {
         $final_col_widths[$i] = isset($col_widths[$i]) ? $col_widths[$i] : $default_w . 'px';
     }
     $col_widths = array_values($final_col_widths);
     
-    // 🔍 DEBUG LOG: Verify counts match (check wp-content/debug.log)
+    // DEBUG LOG: Verify counts match (check wp-content/debug.log)
     error_log("ProSheets Debug: ExpectedCols=$expected_cols | WidthsCount=" . count($col_widths) . " | ValuesCount=" . count($values));
 
     // =========================================================
@@ -250,16 +262,41 @@ if (!function_exists('prosheets_get_table_config')) {
         $tables = get_option('prosheets_tables', array());
         $overrides = isset($tables[$table_id]) ? $tables[$table_id] : array();
         
+        // Start with global defaults
         $config = $defaults;
+        
         foreach ($overrides as $key => $value) {
+            // Enable flags (_en): always apply if key exists
             if (strpos($key, '_en') !== false) {
-                if (array_key_exists($key, $overrides)) $config[$key] = $value;
-            } 
-            elseif (strpos($key, '_rows') !== false || strpos($key, '_cols') !== false || strpos($key, '_thk') !== false || strpos($key, '_font') !== false || strpos($key, '_rad') !== false) {
-                if ($value !== '' && $value !== null && is_numeric($value)) $config[$key] = $value;
+                $config[$key] = $value;
             }
+            // Numeric/size settings: apply if numeric and not empty
+            elseif (strpos($key, '_rows') !== false || strpos($key, '_cols') !== false || 
+                    strpos($key, '_thk') !== false || strpos($key, '_font') !== false || 
+                    strpos($key, '_rad') !== false) {
+                if ($value !== '' && $value !== null && is_numeric($value)) {
+                    $config[$key] = $value;
+                }
+            }
+            // ✅ CACHE SETTINGS: Dynamic inheritance
+            elseif ($key === 'cache_time' || $key === 'cache_unit') {
+                $default_val = isset($defaults[$key]) ? $defaults[$key] : '';
+                
+                // Normalize for comparison
+                $clean_val = ($key === 'cache_unit') ? strtolower(trim($value)) : $value;
+                $clean_def = ($key === 'cache_unit') ? strtolower(trim($default_val)) : $default_val;
+                
+                // Only override if explicitly set AND differs from current global default
+                if ($value !== '' && $value !== null && strval($clean_val) !== strval($clean_def)) {
+                    $config[$key] = $value;
+                }
+                // If empty or matches default, skip -> lets $config keep the inherited default
+            }
+            // All other settings
             else {
-                if ($value !== '' && $value !== null && $value !== false) $config[$key] = $value;
+                if ($value !== '' && $value !== null && $value !== false) {
+                    $config[$key] = $value;
+                }
             }
         }
         return $config;

@@ -16,7 +16,7 @@ function prosheets_render_settings_form($data, $is_defaults = false) {
                 <div class="ps-tab" data-target="tab-body">Body</div>
                 <div class="ps-tab" data-target="tab-highlight">Highlight</div>
                 <div class="ps-tab" data-target="tab-freeze">Freeze Panes</div>
-                <div class="ps-tab" data-target="tab-border">Table Border</div>
+                <div class="ps-tab" data-target="tab-border">Sheet Border</div>
             </div>
             <div class="ps-editor-content">
                 
@@ -147,7 +147,7 @@ function prosheets_render_settings_form($data, $is_defaults = false) {
                 <div id="tab-border" class="ps-tab-content">
                     <div class="freeze-flex-container">
                         <div class="freeze-section-col <?php echo ps_v($data, 't_b_en', 0) ? '' : 'section-disabled'; ?>">
-                            <h3>Table Border <input type="checkbox" name="t_b_en" class="ps-section-toggle" value="1" <?php checked(ps_v($data,'t_b_en',0),1); ?>></h3>
+                            <h3>Sheet Border <input type="checkbox" name="t_b_en" class="ps-section-toggle" value="1" <?php checked(ps_v($data,'t_b_en',0),1); ?>></h3>
                             <div class="freeze-field-row"><label>Thickness</label><input type="number" name="t_b_thk" class="ps-size-50" value="<?php echo ps_v($data, 't_b_thk', 0); ?>" min="0"></div>
                             <div class="freeze-field-row"><label>Color</label><input type="color" name="t_b_clr" value="<?php echo ps_v($data, 't_b_clr', '#dddddd'); ?>"></div>
                             <div class="freeze-field-row"><label>Radius</label><input type="number" name="t_b_rad" class="ps-size-50" value="<?php echo ps_v($data, 't_b_rad', 0); ?>" min="0"></div>
