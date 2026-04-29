@@ -20,7 +20,7 @@ function ps_text_case($c, $prefix) {
 add_shortcode('prosheets', 'prosheets_shortcode');
 function prosheets_shortcode($atts) {
     // 1. Shortcode Attributes & Config
-    $a = shortcode_atts(array('id' => '', 'height' => '500'), $atts);
+    $a = shortcode_atts(array('id' => '', 'height' => 'auto'), $atts);
     $tables = get_option('prosheets_tables', array());
     if (!isset($tables[$a['id']])) return '';
     
@@ -48,6 +48,7 @@ function prosheets_shortcode($atts) {
     
     $border_style  = ps_v($c,'t_b_en') ? ps_v($c,'t_b_thk',0).'px solid '.ps_v($c,'t_b_clr','#ddd') : 'none';
     $margin_bottom = (!empty($c['t_b_pad_b']) && trim($c['t_b_pad_b']) !== '') ? $c['t_b_pad_b'] : '0';
+    $table_height  = (!empty($c['t_b_hght']) && trim($c['t_b_hght']) !== '') ? $c['t_b_hght'] : $a['height'];
     $br            = ps_v($c,'t_b_rad',0).'px';
 
     // 4. Merge Map Logic
@@ -68,8 +69,8 @@ function prosheets_shortcode($atts) {
 
     // 5. CSS Output (Shrink-wrap + Scrollbars + Sticky Panes)
     $out = "<style>
-    .ps-c-{$a['id']} {display: inline-grid; overflow:hidden; border:{$border_style}; border-radius:{$br}; box-shadow:".ps_v($c,'t_b_shd','none')."; background:".ps_v($c,'g_bg','#fff')."; margin-bottom:{$margin_bottom}; position:relative; }
-    .ps-c-{$a['id']}-scroll { width:auto !important; max-width:100%; max-height:{$a['height']}px; overflow:auto; overflow-y:auto;-webkit-overflow-scrolling:touch;border-radius:{$br}; display:block;}    
+    .ps-c-{$a['id']} {display: block; width: fit-content; max-width: 100%; margin: 0 auto; margin-bottom: {$margin_bottom}; overflow:hidden; border:{$border_style}; border-radius:{$br}; box-shadow:".ps_v($c,'t_b_shd','none')."; background:".ps_v($c,'g_bg','#fff')."; position:relative; }
+    .ps-c-{$a['id']}-scroll { width:auto !important; max-width:100%; max-height:{$table_height}; overflow:auto; overflow-y:auto;-webkit-overflow-scrolling:touch;border-radius:{$br}; display:block;}    
     .ps-c-{$a['id']}-scroll::-webkit-scrollbar { width:12px; height:12px; }
     .ps-c-{$a['id']}-scroll::-webkit-scrollbar-track { background:".ps_v($c,'g_bg','#fff')."; }
     .ps-c-{$a['id']}-scroll::-webkit-scrollbar-thumb { background:#888; border-radius:6px; border:3px solid ".ps_v($c,'g_bg','#fff')."; }
@@ -77,11 +78,11 @@ function prosheets_shortcode($atts) {
     .ps-c-{$a['id']}-scroll::-webkit-scrollbar-corner { background:".ps_v($c,'g_bg','#fff')."; }
     .ps-c-{$a['id']}-scroll { scrollbar-width:thin; scrollbar-color:#888 ".ps_v($c,'g_bg','#fff')."; }
     .ps-c-{$a['id']}-scroll table { width:fit-content; min-width:0; border-collapse:separate; border-spacing:0; table-layout:fixed; font-family:sans-serif; font-size:".ps_v($c,'g_font',14)."px; }
-    .ps-c-{$a['id']}-scroll th, .ps-c-{$a['id']}-scroll td { box-sizing:border-box; padding:10px; border:".ps_v($c,'g_b_thk',1)."px solid ".ps_v($c,'g_b_clr','#ddd')."; white-space:pre-wrap; word-wrap:break-word; vertical-align:".ps_v($c,'g_valign','top')."; color:".ps_v($c,'g_txt','#333')."; text-align:".ps_v($c,'g_align','left')."; ".ps_font_style($c,'g')." }
+    .ps-c-{$a['id']}-scroll th, .ps-c-{$a['id']}-scroll td { box-sizing:border-box; padding:5px; border:".ps_v($c,'g_b_thk',1)."px solid ".ps_v($c,'g_b_clr','#ddd')."; white-space:pre-wrap; word-wrap:break-word; vertical-align:".ps_v($c,'g_valign','top')."; color:".ps_v($c,'g_txt','#333')."; text-align:".ps_v($c,'g_align','left')."; ".ps_font_style($c,'g')." }
     .ps-c-{$a['id']}-scroll tbody td { font-size:".ps_v($c,'b_font',14)."px; color:".ps_v($c,'b_txt','#333')."; text-align:".ps_v($c,'b_align','left')."; vertical-align:".ps_v($c,'b_valign','top')."; border:".ps_v($c,'b_b_thk',1)."px solid ".ps_v($c,'b_b_clr','#ddd')."; ".ps_font_style($c,'b')." }";
 
     // Sticky Panes CSS
-    if ($h_count > 0) $out .= ".ps-c-{$a['id']}-scroll thead tr *:nth-child(n) { position:sticky; top:0; z-index:20; background:".ps_v($c,'h_bg','#f9f9f9')." !important; color:".ps_v($c,'h_txt','#333')." !important; text-align:".ps_v($c,'h_align','center')." !important; vertical-align:".ps_v($c,'h_valign','top')." !important; border:".ps_v($c,'h_b_thk',1)."px solid ".ps_v($c,'h_b_clr','#ddd')." !important; font-size:".ps_v($c,'h_font',14)."px !important; ".ps_font_style($c,'h')." ".ps_text_case($c,'h')." }";
+    if ($h_count > 0) $out .= ".ps-c-{$a['id']}-scroll thead tr *:nth-child(n) { position:sticky; top:0; z-index:20; line-height: 1.3; background:".ps_v($c,'h_bg','#f9f9f9')." !important; color:".ps_v($c,'h_txt','#333')." !important; text-align:".ps_v($c,'h_align','center')." !important; vertical-align:".ps_v($c,'h_valign','top')." !important; border:".ps_v($c,'h_b_thk',1)."px solid ".ps_v($c,'h_b_clr','#ddd')." !important; font-size:".ps_v($c,'h_font',14)."px !important; ".ps_font_style($c,'h')." ".ps_text_case($c,'h')." }";
     if ($f_count > 0) $out .= ".ps-c-{$a['id']}-scroll tfoot tr *:nth-child(n) { position:sticky; bottom:0; z-index:20; background:".ps_v($c,'f_bg','#f9f9f9')." !important; color:".ps_v($c,'f_txt','#333')." !important; text-align:".ps_v($c,'f_align','center')." !important; vertical-align:".ps_v($c,'f_valign','top')." !important; border:".ps_v($c,'f_b_thk',1)."px solid ".ps_v($c,'f_b_clr','#ddd')." !important; font-size:".ps_v($c,'f_font',14)."px !important; ".ps_font_style($c,'f')." ".ps_text_case($c,'f')." }";
     if ($l_count > 0) $out .= ".ps-c-{$a['id']}-scroll tr *:nth-child(-n+{$l_count}) { position:sticky; left:0; z-index:10; background:".ps_v($c,'l_bg','#f9f9f9')." !important; color:".ps_v($c,'l_txt','#333')." !important; text-align:".ps_v($c,'l_align','left')." !important; vertical-align:".ps_v($c,'l_valign','top')." !important; border:".ps_v($c,'l_b_thk',1)."px solid ".ps_v($c,'l_b_clr','#ddd')." !important; font-size:".ps_v($c,'l_font',14)."px !important; ".ps_font_style($c,'l')." ".ps_text_case($c,'l')." }";
     if ($r_count > 0) $out .= ".ps-c-{$a['id']}-scroll tr *:nth-last-child(-n+{$r_count}) { position:sticky; right:0; z-index:10; background:".ps_v($c,'r_bg','#f9f9f9')." !important; color:".ps_v($c,'r_txt','#333')." !important; text-align:".ps_v($c,'r_align','left')." !important; vertical-align:".ps_v($c,'r_valign','top')." !important; border:".ps_v($c,'r_b_thk',1)."px solid ".ps_v($c,'r_b_clr','#ddd')." !important; font-size:".ps_v($c,'r_font',14)."px !important; ".ps_font_style($c,'r')." ".ps_text_case($c,'r')." }";

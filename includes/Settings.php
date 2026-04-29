@@ -17,7 +17,18 @@ function prosheets_master_router() {
     if (isset($_GET['all_cleared'])) echo '<div class="updated notice is-dismissible"><p>All caches cleared successfully.</p></div>';
     ?>
     <div class="wrap prosheets-admin-wrap">
-        <h1><img src="<?php echo $header_icon_url; ?>" class="prosheets-header-icon">Pro Sheets</h1>
+    <?php
+        $edit_title = 'ProSheets';
+        if (isset($_GET['view']) && $_GET['view'] === 'edit' && isset($_GET['id'])) {
+            $tid = sanitize_text_field($_GET['id']);
+            $tables = get_option('prosheets_tables', []);
+            if (isset($tables[$tid]['name']) && !empty($tables[$tid]['name'])) {
+                $edit_title = 'ProSheets - ' . esc_html($tables[$tid]['name']);
+            }
+         }
+    ?>
+    <h1><?php echo $edit_title; ?></h1>
+        <!-- <h1><img src="<?php echo $header_icon_url; ?>" class="prosheets-header-icon">Pro Sheets - <?php echo esc_html($t['name']); ?> </h1> -->
         <hr class="wp-header-end">
 
         <?php if ($view === 'list'): ?>
