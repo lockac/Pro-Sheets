@@ -149,6 +149,50 @@ jQuery(document).ready(function($) {
             }
         });
     }
+        // =========================================================
+        // OVERRIDE COLORS TOGGLE (Freeze Panes Tab)
+        // =========================================================
+        (function() {
+            'use strict';
+            
+            function applyOverrideState(checkbox) {
+                if (!checkbox || !checkbox.dataset.prefix) return;
+                const prefix = checkbox.dataset.prefix;
+                const shouldDisable = !checkbox.checked;
+                
+                const bgInput = document.querySelector('input[name="' + prefix + '_bg"]');
+                const txtInput = document.querySelector('input[name="' + prefix + '_txt"]');
+                
+                if (bgInput) {
+                    bgInput.disabled = shouldDisable;
+                    bgInput.style.opacity = shouldDisable ? '0.5' : '1';
+                    bgInput.style.pointerEvents = shouldDisable ? 'none' : 'auto';
+                }
+                if (txtInput) {
+                    txtInput.disabled = shouldDisable;
+                    txtInput.style.opacity = shouldDisable ? '0.5' : '1';
+                    txtInput.style.pointerEvents = shouldDisable ? 'none' : 'auto';
+                }
+            }
+            
+            function initOverrideToggles() {
+                const toggles = document.querySelectorAll('.ps-override-toggle');
+                if (!toggles.length) return;
+                
+                toggles.forEach(function(cb) {
+                    applyOverrideState(cb);
+                    cb.addEventListener('change', function() {
+                        applyOverrideState(this);
+                    });
+                });
+            }
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initOverrideToggles);
+            } else {
+                initOverrideToggles();
+            }
+        })();
 
     $(document).on('change', '.ps-section-toggle', updateSectionStatus);
     updateSectionStatus(); // Run on page load

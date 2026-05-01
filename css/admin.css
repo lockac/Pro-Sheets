@@ -314,8 +314,6 @@ input[name="r_align_to_col"]:checked::after {
     border-radius: 3px;
     overflow: hidden;
     background: #fff;
-    margin-right: 6px;
-
 }
 
 .ps-style-btn {

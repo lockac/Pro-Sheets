@@ -79,9 +79,7 @@ function get_prosheets_data($sheet_id, $range, $table_id = null) {
     
     // Pull cache time from admin settings
     $config = $table_id ? prosheets_get_table_config($table_id) : [];
-    // Pull config from admin settings
-    $config = $table_id ? prosheets_get_table_config($table_id) : [];
-    
+       
     //CONVERT ADMIN TIME + UNIT TO SECONDS
     $cache_value = isset($config['cache_time']) ? intval($config['cache_time']) : 1;
     $cache_unit  = isset($config['cache_unit']) ? strtolower(trim($config['cache_unit'])) : 'hours';
@@ -164,10 +162,10 @@ function get_prosheets_data($sheet_id, $range, $table_id = null) {
     // CALL 3: COLORS & COLUMN WIDTHS (spreadsheets.get + ranges=)
     // =========================================================
     $fmt_url = "https://sheets.googleapis.com/v4/spreadsheets/{$sheet_id}?ranges=" . urlencode($range) . 
-               "&fields=sheets/data/columnMetadata/pixelSize,sheets/data/rowData/values/effectiveFormat/backgroundColor&key={$api_key}";
-    
+           "&fields=sheets/data/columnMetadata/pixelSize,sheets/data/rowData/values/effectiveFormat/backgroundColor,sheets/data/rowData/values/effectiveFormat/textFormat/foregroundColor,sheets/data/rowMetadata/hiddenByUser,sheets/data/rowMetadata/hiddenByFilter&key={$api_key}";    
     $fmt_response = wp_remote_get($fmt_url, array('timeout' => 20, 'sslverify' => true));
     $colors = [];
+    $font_colors = [];
     $col_widths = [];
     $default_w = 100;
     
@@ -176,27 +174,49 @@ function get_prosheets_data($sheet_id, $range, $table_id = null) {
         if (isset($fmt_json['sheets'][0]['data'][0])) {
             $fmt_data = $fmt_json['sheets'][0]['data'][0];
             
-            // 1. Extract Colors
-            if (isset($fmt_data['rowData'])) {
-                foreach ($fmt_data['rowData'] as $row) {
-                    $cells = isset($row['values']) ? $row['values'] : [];
-                    $row_colors = [];
-                    foreach ($cells as $cell) {
-                        $bg = '';
-                        if (isset($cell['effectiveFormat']['backgroundColor'])) {
-                            $c = $cell['effectiveFormat']['backgroundColor'];
-                            if (isset($c['red']) || isset($c['green']) || isset($c['blue'])) {
-                                $r = intval(round(floatval($c['red'] ?? 0) * 255));
-                                $g = intval(round(floatval($c['green'] ?? 0) * 255));
-                                $b = intval(round(floatval($c['blue'] ?? 0) * 255));
-                                $a = isset($c['alpha']) ? max(0.0, min(1.0, floatval($c['alpha']))) : 1.0;
-                                $bg = ($a >= 1.0) ? sprintf('rgb(%d,%d,%d)', $r, $g, $b) : sprintf('rgba(%d,%d,%d,%.2f)', $r, $g, $b, $a);
-                            }
+            // Handle sparse rowData: API skips unformatted rows, causing index misalignment
+            $raw_rows = isset($fmt_data['rowData']) ? $fmt_data['rowData'] : [];
+            for ($i = 0; $i < $expected_rows; $i++) {
+                $row = isset($raw_rows[$i]) ? $raw_rows[$i] : [];
+                $cells = isset($row['values']) ? $row['values'] : [];
+                $row_colors = [];
+                $row_font_colors = [];
+                
+                foreach ($cells as $cell) {
+                    // Extract Background Color
+                    $bg = '';
+                    if (isset($cell['effectiveFormat']['backgroundColor'])) {
+                        $c = $cell['effectiveFormat']['backgroundColor'];
+                        if (isset($c['red']) || isset($c['green']) || isset($c['blue'])) {
+                            $r = intval(round(floatval($c['red'] ?? 0) * 255));
+                            $g = intval(round(floatval($c['green'] ?? 0) * 255));
+                            $b = intval(round(floatval($c['blue'] ?? 0) * 255));
+                            $a = isset($c['alpha']) ? max(0.0, min(1.0, floatval($c['alpha']))) : 1.0;
+                            $bg = ($a >= 1.0) ? sprintf('rgb(%d,%d,%d)', $r, $g, $b) : sprintf('rgba(%d,%d,%d,%.2f)', $r, $g, $b, $a);
                         }
-                        $row_colors[] = $bg;
                     }
-                    $colors[] = array_pad($row_colors, $expected_cols, '');
+                    $row_colors[] = $bg;
+                    
+                    // Extract Font Color (Legacy + Modern Theme Format)
+                    $fg = '';
+                    $fc = null;
+                    if (isset($cell['effectiveFormat']['textFormat']['foregroundColor'])) {
+                        $fc = $cell['effectiveFormat']['textFormat']['foregroundColor'];
+                    } elseif (isset($cell['effectiveFormat']['textFormat']['foregroundColorStyle']['rgbColor'])) {
+                        $fc = $cell['effectiveFormat']['textFormat']['foregroundColorStyle']['rgbColor'];
+                    }
+                    if ($fc && (isset($fc['red']) || isset($fc['green']) || isset($fc['blue']))) {
+                        $r = intval(round(floatval($fc['red'] ?? 0) * 255));
+                        $g = intval(round(floatval($fc['green'] ?? 0) * 255));
+                        $b = intval(round(floatval($fc['blue'] ?? 0) * 255));
+                        $a = isset($fc['alpha']) ? max(0.0, min(1.0, floatval($fc['alpha']))) : 1.0;
+                        $fg = ($a >= 1.0) ? sprintf('rgb(%d,%d,%d)', $r, $g, $b) : sprintf('rgba(%d,%d,%d,%.2f)', $r, $g, $b, $a);
+                    }
+                    $row_font_colors[] = $fg;
                 }
+                
+                $colors[] = array_pad($row_colors, $expected_cols, '');
+                $font_colors[] = array_pad($row_font_colors, $expected_cols, '');
             }
             
             // 2. Extract Widths - Ensure ALL columns get a width
@@ -224,6 +244,9 @@ function get_prosheets_data($sheet_id, $range, $table_id = null) {
     while (count($colors) < $expected_rows) {
         $colors[] = array_pad([], $expected_cols, '');
     }
+    while (count($font_colors) < $expected_rows) {
+        $font_colors[] = array_pad([], $expected_cols, '');
+    }
     
     // STRICT FIX: Ensure col_widths exactly matches expected_cols (prevents phantom columns)
     $final_col_widths = [];
@@ -234,15 +257,83 @@ function get_prosheets_data($sheet_id, $range, $table_id = null) {
     
     // DEBUG LOG: Verify counts match (check wp-content/debug.log)
     error_log("ProSheets Debug: ExpectedCols=$expected_cols | WidthsCount=" . count($col_widths) . " | ValuesCount=" . count($values));
-
+    
+       // =========================================================
+    // IGNORE HIDDEN ROWS FILTER (Upstream, Zero Shortcode Changes)
+    // =========================================================
+    $ignore_hidden = !empty($config['ignore_hidden_rows']);
+    if ($ignore_hidden && !empty($fmt_data['rowMetadata'])) {
+        $row_meta = $fmt_data['rowMetadata'];
+        $hidden_indices = [];
+        
+        // API returns rowMetadata RELATIVE to the requested range when ranges= is used.
+        // Index 0 = first row of range, Index 1 = second row, etc.
+        for ($i = 0; $i < $expected_rows; $i++) {
+            if (isset($row_meta[$i])) {
+                $meta = $row_meta[$i];
+                if (!empty($meta['hiddenByUser']) || !empty($meta['hiddenByFilter'])) {
+                    $hidden_indices[] = $i; // $i matches $values/$colors index
+                }
+            }
+        }
+        
+        if (!empty($hidden_indices)) {
+            $hidden_flip = array_flip($hidden_indices);
+            
+            // Filter values & colors
+            $values = array_values(array_diff_key($values, $hidden_flip));
+            $colors = array_values(array_diff_key($colors, $hidden_flip));
+            $font_colors = array_values(array_diff_key($font_colors, $hidden_flip));
+            
+            // Build absolute-sheet-to-filtered row map for merges
+            // Merges from the API use ABSOLUTE sheet indices, so we map them correctly
+            $sheet_to_filtered = [];
+            $new_idx = 0;
+            for ($i = 0; $i < $expected_rows; $i++) {
+                if (!isset($hidden_flip[$i])) {
+                    $sheet_to_filtered[$bounds['start_row'] + $i] = $new_idx++;
+                }
+            }
+            
+            // Adjust merge indices to match filtered grid
+            $adjusted_merges = [];
+            foreach ($merges as $m) {
+                $orig_sr = $m['startRowIndex'];
+                $orig_er = $m['endRowIndex']; // exclusive
+                
+                $new_sr = isset($sheet_to_filtered[$orig_sr]) ? $sheet_to_filtered[$orig_sr] : null;
+                $last_vis = null;
+                for ($r = $orig_er - 1; $r >= $orig_sr; $r--) {
+                    if (isset($sheet_to_filtered[$r])) {
+                        $last_vis = $sheet_to_filtered[$r];
+                        break;
+                    }
+                }
+                $new_er = $last_vis !== null ? $last_vis + 1 : null;
+                
+                if ($new_sr !== null && $new_er !== null && $new_er > $new_sr) {
+                    $m['startRowIndex'] = $new_sr;
+                    $m['endRowIndex'] = $new_er;
+                    $adjusted_merges[] = $m;
+                }
+            }
+            $merges = $adjusted_merges;
+            
+            // Update bounds & row count to match filtered data
+            $expected_rows = count($values);
+            $bounds['end_row'] = $bounds['start_row'] + max(0, $expected_rows - 1);
+        }
+    }
+    
     // =========================================================
     // RETURN COMBINED RESULT
     // =========================================================
-    $result = [
+  $result = [
         'values'       => $values,
         'merges'       => $merges,
         '_raw_merges'  => $all_merges,
         'colors'       => $colors,
+        'font_colors'  => $font_colors,
         'col_widths'   => $col_widths,
         'range_bounds' => $bounds
     ];

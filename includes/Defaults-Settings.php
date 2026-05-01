@@ -27,6 +27,7 @@ function prosheets_render_settings_form($data, $is_defaults = false) {
                         <tr><th>Table Name</th><td><input type="text" name="table_name" class="regular-text" value="<?php echo ps_v($data, 'name'); ?>" placeholder="Price list 2024" required></td></tr>
                         <tr><th>Sheet ID</th><td><input type="text" name="sheet_id" class="regular-text" value="<?php echo ps_v($data, 'sheet_id'); ?>" required><span class="ps-help-text">Found in your Google Sheet URL between /d/ and /edit</span></td></tr>
                         <tr><th>Range</th><td><input type="text" name="range" class="regular-text" value="<?php echo ps_v($data, 'range'); ?>" placeholder="sheet1!A1:E50" required></td></tr>
+                        <tr><th>Ignore Hidden Rows</th><td><input type="checkbox" class="ps-style-toggle" name="ignore_hidden_rows" value="1" <?php checked(ps_v($data, 'ignore_hidden_rows', 0), 1); ?>></td></tr>                       
                         <?php endif; ?>
                         <tr>
                             <th>Refresh Rate</th>
@@ -109,10 +110,12 @@ function prosheets_render_settings_form($data, $is_defaults = false) {
                         <div class="freeze-field-row"><label>Enable Header Merges</label><input type="checkbox" name="h_merges_en" value="1" <?php checked(ps_v($data, 'h_merges_en', 0), 1); ?>></div>
                         <?php endif; ?>
 
-                        <div class="freeze-field-row"><label>Background</label><input type="color" name="<?php echo $p; ?>_bg" value="<?php echo ps_v($data, $p.'_bg', '#f9f9f9'); ?>"></div>
+                        <?php $override_on = ps_v($data, $p.'_override_colors', 0); ?>
+                        <div class="freeze-field-row"><label>Override Colors</label><input type="checkbox" class="ps-style-toggle ps-override-toggle" data-prefix="<?php echo $p; ?>" name="<?php echo $p; ?>_override_colors" value="1" <?php checked($override_on, 1); ?>></div>
+                        <div class="freeze-field-row"><label>Background</label><input type="color" name="<?php echo $p; ?>_bg" value="<?php echo ps_v($data, $p.'_bg', '#f9f9f9'); ?>" <?php echo !$override_on ? 'disabled' : ''; ?>></div>
                         <div class="freeze-field-row"><label>Font Size</label><input type="number" name="<?php echo $p; ?>_font" class="ps-size-50" value="<?php echo ps_v($data, $p.'_font', 14); ?>" min="8"></div>
-                        <div class="freeze-field-row"><label>Font Color</label><input type="color" name="<?php echo $p; ?>_txt" value="<?php echo ps_v($data, $p.'_txt', '#333333'); ?>"></div>
-                        
+                        <div class="freeze-field-row"><label>Font Color</label><input type="color" name="<?php echo $p; ?>_txt" value="<?php echo ps_v($data, $p.'_txt', '#333333'); ?>" <?php echo !$override_on ? 'disabled' : ''; ?>></div>
+
                         <div class="freeze-field-row"><label>Font Style</label>
                             <div class="ps-style-group">
                                 <label class="ps-style-btn is-bold <?php echo ps_v($data,$p.'_bold') ? 'active' : ''; ?>"><input type="checkbox" name="<?php echo $p; ?>_bold" value="1" <?php checked(ps_v($data,$p.'_bold'),1); ?>>B</label>
@@ -149,6 +152,7 @@ function prosheets_render_settings_form($data, $is_defaults = false) {
                         <div class="freeze-section-col <?php echo ps_v($data, 't_b_en', 0) ? '' : 'section-disabled'; ?>">
                             <h3>Sheet Size & Border <input type="checkbox" name="t_b_en" class="ps-section-toggle" value="1" <?php checked(ps_v($data,'t_b_en',0),1); ?>></h3>
                             <div class="freeze-field-row"><label>Sheet Height</label><input type="text" name="t_b_hght" class="ps-padding-input" placeholder="e.g. 10px, 1em" value="<?php echo ps_v($data, 't_b_hght', ''); ?>"></div>
+                            <div class="freeze-field-row"><label>Row Height</label><input type="text" name="row_hght" class="ps-padding-input" placeholder="e.g. 40px, 2.5em, auto" value="<?php echo ps_v($data, 'row_hght', ''); ?>"></div>
                             <div class="freeze-field-row"><label>Thickness</label><input type="number" name="t_b_thk" class="ps-size-50" value="<?php echo ps_v($data, 't_b_thk', 0); ?>" min="0"></div>
                             <div class="freeze-field-row"><label>Color</label><input type="color" name="t_b_clr" value="<?php echo ps_v($data, 't_b_clr', '#dddddd'); ?>"></div>
                             <div class="freeze-field-row"><label>Radius</label><input type="number" name="t_b_rad" class="ps-size-50" value="<?php echo ps_v($data, 't_b_rad', 0); ?>" min="0"></div>
@@ -201,6 +205,12 @@ function prosheets_process_defaults_save() {
         'r_bold' => isset($_POST['r_bold']) ? 1 : 0, 'r_italic' => isset($_POST['r_italic']) ? 1 : 0, 'r_underline' => isset($_POST['r_underline']) ? 1 : 0, 'r_case' => sanitize_text_field($_POST['r_case']),
         'l_align_to_col' => isset($_POST['l_align_to_col']) ? 1 : 0,
         'r_align_to_col' => isset($_POST['r_align_to_col']) ? 1 : 0,
+        'ignore_hidden_rows' => isset($_POST['ignore_hidden_rows']) ? 1 : 0,
+        'h_override_colors' => isset($_POST['h_override_colors']) ? 1 : 0,
+        'f_override_colors' => isset($_POST['f_override_colors']) ? 1 : 0,
+        'l_override_colors' => isset($_POST['l_override_colors']) ? 1 : 0,
+        'r_override_colors' => isset($_POST['r_override_colors']) ? 1 : 0,
+        'row_hght' => sanitize_text_field($_POST['row_hght'] ?? ''),
         );
 
     update_option('prosheets_defaults', $defaults);

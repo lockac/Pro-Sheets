@@ -21,6 +21,7 @@ add_shortcode('prosheets', 'prosheets_shortcode');
 function prosheets_shortcode($atts) {
     // 1. Shortcode Attributes & Config
     $a = shortcode_atts(array('id' => '', 'height' => 'auto'), $atts);
+    
     $tables = get_option('prosheets_tables', array());
     if (!isset($tables[$a['id']])) return '';
     
@@ -36,6 +37,7 @@ function prosheets_shortcode($atts) {
     $col_widths = isset($data['col_widths']) ? $data['col_widths'] : [];
     $colors     = isset($data['colors']) ? $data['colors'] : [];
     $bounds     = isset($data['range_bounds']) ? $data['range_bounds'] : [];
+    $font_colors = isset($data['font_colors']) ? $data['font_colors'] : [];
     
     $start_row = isset($bounds['start_row']) ? intval($bounds['start_row']) : 0;
     $start_col = isset($bounds['start_col']) ? intval($bounds['start_col']) : 0;
@@ -79,24 +81,60 @@ function prosheets_shortcode($atts) {
     .ps-c-{$a['id']}-scroll { scrollbar-width:thin; scrollbar-color:#888 ".ps_v($c,'g_bg','#fff')."; }
     .ps-c-{$a['id']}-scroll table { width:fit-content; min-width:0; border-collapse:separate; border-spacing:0; table-layout:fixed; font-family:sans-serif; font-size:".ps_v($c,'g_font',14)."px; }
     .ps-c-{$a['id']}-scroll th, .ps-c-{$a['id']}-scroll td { box-sizing:border-box; padding:5px; border:".ps_v($c,'g_b_thk',1)."px solid ".ps_v($c,'g_b_clr','#ddd')."; white-space:pre-wrap; word-wrap:break-word; vertical-align:".ps_v($c,'g_valign','top')."; color:".ps_v($c,'g_txt','#333')."; text-align:".ps_v($c,'g_align','left')."; ".ps_font_style($c,'g')." }
+    ".(!empty($c['row_hght']) ? ".ps-c-{$a['id']}-scroll th, .ps-c-{$a['id']}-scroll td { height:".esc_attr($c['row_hght'])."; min-height:".esc_attr($c['row_hght'])."; }" : "")."
     .ps-c-{$a['id']}-scroll tbody td { font-size:".ps_v($c,'b_font',14)."px; color:".ps_v($c,'b_txt','#333')."; text-align:".ps_v($c,'b_align','left')."; vertical-align:".ps_v($c,'b_valign','top')."; border:".ps_v($c,'b_b_thk',1)."px solid ".ps_v($c,'b_b_clr','#ddd')."; ".ps_font_style($c,'b')." }";
+  
+    //2. Sticky Panes CSS (Fixed Stacking Context + Align + Padding)
 
-    // Sticky Panes CSS
-    if ($h_count > 0) $out .= ".ps-c-{$a['id']}-scroll thead tr *:nth-child(n) { position:sticky; top:0; z-index:20; line-height: 1.3; background:".ps_v($c,'h_bg','#f9f9f9')." !important; color:".ps_v($c,'h_txt','#333')." !important; text-align:".ps_v($c,'h_align','center')." !important; vertical-align:".ps_v($c,'h_valign','top')." !important; border:".ps_v($c,'h_b_thk',1)."px solid ".ps_v($c,'h_b_clr','#ddd')." !important; font-size:".ps_v($c,'h_font',14)."px !important; ".ps_font_style($c,'h')." ".ps_text_case($c,'h')." }";
-    if ($f_count > 0) $out .= ".ps-c-{$a['id']}-scroll tfoot tr *:nth-child(n) { position:sticky; bottom:0; z-index:20; background:".ps_v($c,'f_bg','#f9f9f9')." !important; color:".ps_v($c,'f_txt','#333')." !important; text-align:".ps_v($c,'f_align','center')." !important; vertical-align:".ps_v($c,'f_valign','top')." !important; border:".ps_v($c,'f_b_thk',1)."px solid ".ps_v($c,'f_b_clr','#ddd')." !important; font-size:".ps_v($c,'f_font',14)."px !important; ".ps_font_style($c,'f')." ".ps_text_case($c,'f')." }";
-    if ($l_count > 0) $out .= ".ps-c-{$a['id']}-scroll tr *:nth-child(-n+{$l_count}) { position:sticky; left:0; z-index:10; background:".ps_v($c,'l_bg','#f9f9f9')." !important; color:".ps_v($c,'l_txt','#333')." !important; text-align:".ps_v($c,'l_align','left')." !important; vertical-align:".ps_v($c,'l_valign','top')." !important; border:".ps_v($c,'l_b_thk',1)."px solid ".ps_v($c,'l_b_clr','#ddd')." !important; font-size:".ps_v($c,'l_font',14)."px !important; ".ps_font_style($c,'l')." ".ps_text_case($c,'l')." }";
-    if ($r_count > 0) $out .= ".ps-c-{$a['id']}-scroll tr *:nth-last-child(-n+{$r_count}) { position:sticky; right:0; z-index:10; background:".ps_v($c,'r_bg','#f9f9f9')." !important; color:".ps_v($c,'r_txt','#333')." !important; text-align:".ps_v($c,'r_align','left')." !important; vertical-align:".ps_v($c,'r_valign','top')." !important; border:".ps_v($c,'r_b_thk',1)."px solid ".ps_v($c,'r_b_clr','#ddd')." !important; font-size:".ps_v($c,'r_font',14)."px !important; ".ps_font_style($c,'r')." ".ps_text_case($c,'r')." }";
-    if ($h_count > 0 && $l_count > 0) $out .= ".ps-c-{$a['id']}-scroll thead tr *:nth-child(-n+{$l_count}) { z-index:30 !important; }";
-    if ($h_count > 0 && $r_count > 0) $out .= ".ps-c-{$a['id']}-scroll thead tr *:nth-last-child(-n+{$r_count}) { z-index:30 !important; }";
-    if ($f_count > 0 && $l_count > 0) $out .= ".ps-c-{$a['id']}-scroll tfoot tr *:nth-child(-n+{$l_count}) { z-index:30 !important; }";
-    if ($f_count > 0 && $r_count > 0) $out .= ".ps-c-{$a['id']}-scroll tfoot tr *:nth-last-child(-n+{$r_count}) { z-index:30 !important; }";
+    if ($h_count > 0) {
+        $h_ov = !empty($c['h_override_colors']);
+        $h_bg = $h_ov ? 'background:'.ps_v($c,'h_bg','#f9f9f9').' !important;' : '';
+        $h_tx = $h_ov ? 'color:'.ps_v($c,'h_txt','#333').' !important;' : '';
+        $out .= ".ps-c-{$a['id']}-scroll thead { position:sticky; top:0; display:table-header-group; z-index:20;}";
+        $out .= ".ps-c-{$a['id']}-scroll thead th { position:sticky; top:0; z-index:20 !important; line-height:1.3; {$h_bg} {$h_tx} text-align:".ps_v($c,'h_align','center')." !important; vertical-align:".ps_v($c,'h_valign','top')." !important; border:".ps_v($c,'h_b_thk',1)."px solid ".ps_v($c,'h_b_clr','#ddd')." !important; font-size:".ps_v($c,'h_font',14)."px !important; ".ps_font_style($c,'h')." ".ps_text_case($c,'h')." }";
+    }
+    if ($f_count > 0) {
+        $f_ov = !empty($c['f_override_colors']);
+        $f_bg = $f_ov ? 'background:'.ps_v($c,'f_bg','#f9f9f9').' !important;' : '';
+        $f_tx = $f_ov ? 'color:'.ps_v($c,'f_txt','#333').' !important;' : '';
+        $out .= ".ps-c-{$a['id']}-scroll tfoot { position:sticky; bottom:0; display:table-footer-group; }";
+        $out .= ".ps-c-{$a['id']}-scroll tfoot td { position:sticky; bottom:0; z-index:20 !important; {$f_bg} {$f_tx} text-align:".ps_v($c,'f_align','center')." !important; vertical-align:".ps_v($c,'f_valign','top')." !important; border:".ps_v($c,'f_b_thk',1)."px solid ".ps_v($c,'f_b_clr','#ddd')." !important; font-size:".ps_v($c,'f_font',14)."px !important; ".ps_font_style($c,'f')." ".ps_text_case($c,'f')." }";
+    }
+    if ($l_count > 0) {
+        $l_ov = !empty($c['l_override_colors']);
+        $l_bg = $l_ov ? 'background:'.ps_v($c,'l_bg','#f9f9f9').' !important;' : '';
+        $l_tx = $l_ov ? 'color:'.ps_v($c,'l_txt','#333').' !important;' : '';
+        // Strictly body sidebar only (z-index 10)
+        $out .= ".ps-c-{$a['id']}-scroll tbody tr td:nth-child(-n+{$l_count}) { position:sticky; left:0; z-index:10 !important; {$l_bg} {$l_tx} text-align:".ps_v($c,'l_align','left')." !important; vertical-align:".ps_v($c,'l_valign','top')." !important; border:".ps_v($c,'l_b_thk',1)."px solid ".ps_v($c,'l_b_clr','#ddd')." !important; font-size:".ps_v($c,'l_font',14)."px !important; ".ps_font_style($c,'l')." ".ps_text_case($c,'l')." }";
+    }
+    if ($r_count > 0) {
+        $r_ov = !empty($c['r_override_colors']);
+        $r_bg = $r_ov ? 'background:'.ps_v($c,'r_bg','#f9f9f9').' !important;' : '';
+        $r_tx = $r_ov ? 'color:'.ps_v($c,'r_txt','#333').' !important;' : '';
+        $out .= ".ps-c-{$a['id']}-scroll tbody tr td:nth-last-child(-n+{$r_count}) { position:sticky; right:0; z-index:10 !important; {$r_bg} {$r_tx} text-align:".ps_v($c,'r_align','left')." !important; vertical-align:".ps_v($c,'r_valign','top')." !important; border:".ps_v($c,'r_b_thk',1)."px solid ".ps_v($c,'r_b_clr','#ddd')." !important; font-size:".ps_v($c,'r_font',14)."px !important; ".ps_font_style($c,'r')." ".ps_text_case($c,'r')." }";
+    }
+    
+    // Corner stacking (30 explicitly beats header 20 & sidebar 10)
+    if ($h_count > 0 && $l_count > 0) $out .= ".ps-c-{$a['id']}-scroll thead th:nth-child(-n+{$l_count}) { position: sticky; left: 0; z-index:30 !important; }";
+    if ($h_count > 0 && $r_count > 0) $out .= ".ps-c-{$a['id']}-scroll thead th:nth-last-child(-n+{$r_count}) { position: sticky; right: 0; z-index:30 !important; }";
+    if ($f_count > 0 && $l_count > 0) $out .= ".ps-c-{$a['id']}-scroll tfoot td:nth-child(-n+{$l_count}) { position: sticky; left: 0; z-index:30 !important; }";
+    if ($f_count > 0 && $r_count > 0) $out .= ".ps-c-{$a['id']}-scroll tfoot td:nth-last-child(-n+{$r_count}) { position: sticky; right: 0; z-index:30 !important; }";
+
+    // Align to Column (Scoped across all sections)
     if ($l_count > 0 && !empty($c['l_align_to_col'])) {
-        $l_align = ps_v($c,'l_align','left');
-        $out .= ".ps-c-{$a['id']}-scroll thead tr *:nth-child(-n+{$l_count}), .ps-c-{$a['id']}-scroll tfoot tr *:nth-child(-n+{$l_count}) { text-align:{$l_align} !important; }";
+        $l_align = ps_v($c, 'l_align', 'left');
+        $out .= ".ps-c-{$a['id']}-scroll thead th:nth-child(-n+{$l_count}), .ps-c-{$a['id']}-scroll tbody td:nth-child(-n+{$l_count}), .ps-c-{$a['id']}-scroll tfoot td:nth-child(-n+{$l_count}) { text-align: {$l_align} !important; }";
     }
     if ($r_count > 0 && !empty($c['r_align_to_col'])) {
-        $r_align = ps_v($c,'r_align','left');
-        $out .= ".ps-c-{$a['id']}-scroll thead tr *:nth-last-child(-n+{$r_count}), .ps-c-{$a['id']}-scroll tfoot tr *:nth-last-child(-n+{$r_count}) { text-align:{$r_align} !important; }";
+        $r_align = ps_v($c, 'r_align', 'left');
+        $out .= ".ps-c-{$a['id']}-scroll thead th:nth-last-child(-n+{$r_count}), .ps-c-{$a['id']}-scroll tbody td:nth-last-child(-n+{$r_count}), .ps-c-{$a['id']}-scroll tfoot td:nth-last-child(-n+{$r_count}) { text-align: {$r_align} !important; }";
+    }
+
+    // Multi-row Header Padding Compression
+    if ($h_count > 1) {
+        $out .= ".ps-c-{$a['id']}-scroll thead tr:first-child th { padding-top: 5px !important; padding-bottom: 1px !important; }";
+        $out .= ".ps-c-{$a['id']}-scroll thead tr:not(:first-child):not(:last-child) th { padding-top: 1px !important; padding-bottom: 1px !important; }";
+        $out .= ".ps-c-{$a['id']}-scroll thead tr:last-child th { padding-top: 1px !important; padding-bottom: 5px !important; }";
     }
     $out .= "</style>";
 
@@ -110,7 +148,7 @@ function prosheets_shortcode($atts) {
     }
     $colgroup .= '</colgroup>';
 
-    $render_row = function($row_data, $row_idx, $tag) use (&$merge_map, $max_cols, $colors, $c, $l_count, $r_count) {
+                $render_row = function($row_data, $row_idx, $tag) use (&$merge_map, $max_cols, $colors, $font_colors, $c, $l_count, $r_count, $h_count, $f_count, $total) {
         while (count($row_data) < $max_cols) $row_data[] = '';
         $html = '<tr>';
         foreach ($row_data as $ci => $cell) {
@@ -122,13 +160,31 @@ function prosheets_shortcode($atts) {
                 if ($cs > 1) $attrs .= " colspan='{$cs}'";
                 if ($rs > 1) $attrs .= " rowspan='{$rs}'";
             }
-            // Apply sheet background color (NO !important so Admin Settings win)
+            
+            // Build inline styles (NO !important so Admin Override wins when checked)
             $style = '';
             if (!empty($colors[$row_idx][$ci])) {
-                $style = " style='background-color:{$colors[$row_idx][$ci]};'";
+                $style .= "background-color:{$colors[$row_idx][$ci]};";
             }
-            // $html .= "<{$tag}{$attrs}{$style}>" . nl2br(esc_html($cell)) . "</{$tag}>";
-            $html .= "<{$tag}{$attrs}{$style}>" . esc_html($cell) . "</{$tag}>";
+            if (!empty($font_colors[$row_idx][$ci])) {
+                $fc = str_replace(' ', '', $font_colors[$row_idx][$ci]);
+                
+                // Determine if cell is in a special zone (header, footer, or sidebar)
+                $is_header = ($row_idx < $h_count);
+                $is_footer = ($f_count > 0 && $row_idx >= $total - $f_count);
+                $is_left   = ($l_count > 0 && $ci < $l_count);
+                $is_right  = ($r_count > 0 && $ci >= $max_cols - $r_count);
+                $is_special = $is_header || $is_footer || $is_left || $is_right;
+                
+                // Only filter default white/black for standard body cells.
+                // Special zones get exact Sheet colors (even if white/black).
+                if ($is_special || ($fc !== 'rgb(0,0,0)' && $fc !== 'rgba(0,0,0,0)' && $fc !== 'rgba(0,0,0,1)' && $fc !== 'rgb(255,255,255)' && $fc !== 'rgba(255,255,255,1)')) {
+                    $style .= "color:{$font_colors[$row_idx][$ci]};";
+                }
+            }
+            $style_attr = $style ? " style='{$style}'" : '';
+            
+            $html .= "<{$tag}{$attrs}{$style_attr}>" . esc_html($cell) . "</{$tag}>";
         }
         $html .= '</tr>';
         return $html;
